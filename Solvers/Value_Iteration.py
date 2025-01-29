@@ -63,13 +63,13 @@ class ValueIteration(AbstractSolver):
         """
 
         # you can add variables here if it is helpful
-
         # Update the estimated value of each state
         for each_state in range(self.env.observation_space.n):
             # Do a one-step lookahead to find the best action
             # Update the value function. Ref: Sutton book eq. 4.10.
             ################################
             #   YOUR IMPLEMENTATION HERE   #
+            self.V[each_state] = self.one_step_lookahead(each_state).max()
             ################################
 
         # Dont worry about this part
@@ -139,6 +139,7 @@ class ValueIteration(AbstractSolver):
             """
             ################################
             #   YOUR IMPLEMENTATION HERE   #
+            return np.argmax(self.one_step_lookahead(state))
             ################################
             
 
@@ -191,6 +192,22 @@ class AsynchVI(ValueIteration):
         # Choose state with the maximal value change potential  #
         # Do a one-step lookahead to find the best action       #
         # Update the value function. Ref: Sutton book eq. 4.10. #
+        state_with_max_change_potential = self.pq.pop()
+        value = self.one_step_lookahead(state_with_max_change_potential)
+        action = np.argmax(value)
+        self.V[state_with_max_change_potential]= value.max()
+        for state in self.pred[state_with_max_change_potential]:
+            self.pq.update(state,-np.abs(self.V[state]-self.one_step_lookahead(state).max()))
+        for a in range(self.env.action_space.n):
+                for prob, next_state, reward, done in self.env.P[state_with_max_change_potential][action]:
+                    if prob > 0:
+                        if next_state not in self.pred.keys():
+                            self.pred[next_state] = set()
+                        if state not in self.pred[next_state]:
+                            try:
+                                self.pred[next_state].add(state_with_max_change_potential)
+                            except KeyError:
+                                self.pred[next_state] = set()
         #########################################################
 
         # you can ignore this part
