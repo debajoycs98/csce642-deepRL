@@ -48,14 +48,16 @@ class PolicyIteration(AbstractSolver):
 
         # Evaluate the current policy
         self.policy_eval()
-
+        self.policy = np.zeros([self.env.observation_space.n, self.env.action_space.n])
         # For each state...
-        for s in range(self.env.observation_space.n):
+        for state in range(self.env.observation_space.n):
             # Find the best action by one-step lookahead
             # Ties are resolved in favor of actions with lower indexes (Hint: use max/argmax directly).
 
             ################################
             #   YOUR IMPLEMENTATION HERE   #
+            action = np.argmax(self.one_step_lookahead(state))
+            self.policy[state,action]=1
             ################################
 
 
@@ -102,6 +104,14 @@ class PolicyIteration(AbstractSolver):
         """
         ################################
         #   YOUR IMPLEMENTATION HERE   #
+        V_pi = np.eye(self.env.observation_space.n)
+        C = np.zeros(self.env.observation_space.n)
+        for state in range(self.env.observation_space.n):
+            for action in range(self.env.action_space.n):
+                for probability,next_state,reward,done in self.env.P[state][action]:
+                    C[state]+= self.policy[state,action]*reward*probability
+                    V_pi[state][next_state] += - self.policy[state,action]*probability*self.options.gamma
+        self.V = np.linalg.solve(V_pi,C)
         ################################
 
     def create_greedy_policy(self):
