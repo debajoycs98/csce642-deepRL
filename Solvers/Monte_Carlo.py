@@ -64,6 +64,23 @@ class MonteCarlo(AbstractSolver):
         discount_factor = self.options.gamma
         ################################
         #   YOUR IMPLEMENTATION HERE   #
+        for steps in range(self.options.steps):
+            probs = self.policy(state)
+            action = np.random.choice(np.arange(len(probs)), p=probs)
+            next_state, reward, done, _ = self.step(action)
+            episode.append((state,action,reward,next_state))
+            state = next_state
+            if done:
+                break
+        G = 0
+        #iterate through the episode in reverse order
+        for i in range(len(episode)-1,-1,-1):
+            state, action, reward, next_state = episode[i]
+            G = discount_factor*G + reward
+            if (state, action) not in episode[:i-1]:
+                self.returns_sum[(state, action)]+=G
+                self.returns_count[(state, action)] += 1
+                self.Q[state][action] = self.returns_sum[(state, action)]/self.returns_count[(state, action)]
         ################################
 
     def __str__(self):
@@ -89,6 +106,12 @@ class MonteCarlo(AbstractSolver):
         def policy_fn(observation):
             ################################
             #   YOUR IMPLEMENTATION HERE   #
+            best_action = np.argmax(self.Q[observation])
+            greedy_probability = 1-self.options.epsilon + self.options.epsilon/nA
+            non_greedy_probability = self.options.epsilon/nA
+            policy = np.full(nA, non_greedy_probability)
+            policy[best_action] = greedy_probability
+            return policy
             ################################
 
         return policy_fn
@@ -108,6 +131,7 @@ class MonteCarlo(AbstractSolver):
         def policy_fn(state):
             ################################
             #   YOUR IMPLEMENTATION HERE   #
+            return np.argmax(self.Q[state])
             ################################
 
 
@@ -162,6 +186,24 @@ class OffPolicyMC(MonteCarlo):
 
         ################################
         #   YOUR IMPLEMENTATION HERE   #
+        for steps in range(self.options.steps):
+            probs = self.behavior_policy(state)
+            action = np.random.choice(np.arange(len(probs)), p=probs)
+            next_state, reward, done, _ = self.step(action)
+            episode.append((state,action,reward,next_state))
+            state = next_state
+            if done:
+                break
+        G=0
+        W = 1
+        for i in range(len(episode)-1, -1, -1):
+            state, action, reward, next_state = episode[i]
+            G = self.options.gamma*G + reward
+            self.C[state][action] += W
+            self.Q[state][action] += (W/self.C[state][action])*(G-self.Q[state][action])
+            if action != self.target_policy(state):
+                break
+            W = W*(1/self.behavior_policy(state)[action])
         ################################
         
 
